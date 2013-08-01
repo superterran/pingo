@@ -79,20 +79,14 @@
     </head>
     <body bgcolor="orange">
 
-        <div id="controls">
-            <a href="#" onclick="$('options').toggle()">Options</a>
-            <form action = "?do=repeat" method="post" id="options" style="display: none">
-            <label>Repeat: </label> <input type="text" name = "repeat" value="<?php echo $_COOKIE['repeat'] ?>"><input type="submit" value = "update">
-            </form>
-        </div>
-        <div id="content"><h1>Checking Status...</h1></div>
+
 
         <script type="text/javascript">
 
 
             var pingo = Class.create({
 
-                repeat: <?php echo (int) $_COOKIE['repeat'] ?>,
+                repeat: 3,
 
                 trans: <?php if(is_file('remoteips.json')) echo file_get_contents('remoteips.json'); else echo '{ }'; ?>,
 
@@ -103,8 +97,6 @@
                 initialize: function() {
 
                     this.testLoop();
-                    this.getIp()
-
                     new PeriodicalExecuter(function(pe) {this.testLoop()}.bind(this), this.repeat);
                 },
 
@@ -161,7 +153,7 @@
                     if((this.state == 1) && (this.ip == '')) {
                         this.getIp();
                     }
-
+                    this.favIcon();
                 },
 
                 favIcon: function() {
@@ -173,13 +165,32 @@
                     link.href = './icos/'+document.bgColor+'.ico';
                     document.getElementsByTagName('head')[0].appendChild(link);
 
-                }
+                },
 
+                showOptions: function() {
+
+                    new Ajax.Request('http://<?php echo $_SERVER['SERVER_NAME'] ?>?do=get&option=repeat', {
+                        asynchronous: false,
+                        onSuccess: function(response) {
+                            $('option-repeat').value = response.responseText;
+                        }.bind(this)
+                    });
+                    $('options').toggle()
+                }
             });
 
             var app = new pingo();
 
         </script>
+
+
+        <div id="controls">
+            <a href="#" onclick="app.showOptions(); return false;">Options</a>
+            <form action = "?do=repeat" method="post" id="options" style="display: none">
+                <label>Repeat: </label> <input id="option-repeat" type="text" name = "repeat" value="<?php echo $this->getRepeat() ?>"><input type="submit" value = "update">
+            </form>
+        </div>
+        <div id="content"><h1>Checking Status...</h1></div>
 
     </body>
 </html>

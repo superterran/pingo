@@ -2,8 +2,21 @@
 
 class pingo {
 
+    public $cache = array();
+
+    public function __construct() {
+        $this->getCache();
+
+        if(!isset($this->cache['repeat']))
+        {
+            $this->cache['repeat'] = 20;
+            $this->saveCache();
+        }
+    }
+
     public function doAction($action, $do)
     {
+
         switch($action) {
 
             case "status":
@@ -14,15 +27,15 @@ class pingo {
                 echo (string) trim(file_get_contents('http://phihag.de/ip/'));
             break;
 
+            case "get":
+                if(isset($this->cache[$do['option']])) echo $this->cache[$do['option']];
+            break;
             case "repeat":
-                if(!isset($_COOKIE['repeat']))
-                {
-                    setcookie('repeat', '20', time()+60*60*24*30);
-                }
 
                 if(isset($do['repeat']))
                 {
-                    setcookie('repeat', $do['repeat'], time()+60*60*24*30);
+                    $this->cache['repeat'] = $do['repeat'];
+                    $this->saveCache();
                     header('location: /');
                 }
             break;
@@ -37,31 +50,81 @@ class pingo {
         if(is_file($phtml)) include($phtml);
     }
 
+
+    public function getRepeat()
+    {
+        return (int) $this->cache['repeat'];
+    }
+
     public function ping($url)
     {
+
+        $run = false;
         if(!$url) $url = 'google.com';
-        $host = $url;
-        $port = 80;
-        $waitTimeoutInSeconds = 1;
-        if($fp = fsockopen($host,$port,$errCode,$errStr,$waitTimeoutInSeconds)){
-            return true;
+
+        $cache = $this->getCache();
+        if(isset($cache[$url])) {
+            $lastran = (int) $cache[$url] + $this->getRepeat();
+            if(time() >= $lastran) {
+                $run = true;
+            } else {
+                $run = false;
+                return $cache[$url.'_status'];
+            }
+
         } else {
-            return false;
+
+
+            $run = true;
+
         }
-        fclose($fp);
+
+        if($run) {
+
+            $host = $url;
+            $port = 80;
+            $waitTimeoutInSeconds = 1;
+            if($fp = fsockopen($host,$port,$errCode,$errStr,$waitTimeoutInSeconds)){
+                $cache[$url] = time();
+                $cache[$url.'_status'] = true;
+                $this->cache = $cache;
+                $this->saveCache();
+                return true;
+            } else {
+                $cache[$url] = time();
+                $cache[$url.'_status'] = false;
+                $this->cache = $cache;
+                $this->saveCache();
+                return false;
+            }
+            fclose($fp);
+        } else {
+            return $cache[$url.'_status'];
+        }
+
+
+
     }
 
-    public function derp_ping($url)
+    public function getCache()
     {
-        try {
 
-            if(!$url) $url = 'http://google.com';
-            return (bool) file_get_contents($url);
-
-        } catch(Exception $e) {
-
-            return false;
+        if(!is_file('lastran.cache')) {
+           file_put_contents('lastran.cache', serialize(array()));
         }
+
+        $this->cache = unserialize(file_get_contents('lastran.cache'));
+        return $this->cache;
     }
-    
+
+    public function saveCache($cache = false)
+    {
+        if(!$cache) $cache = $this->cache;
+        file_put_contents('lastran.cache', serialize($cache));
+    }
+
+    public function __deconstruct()
+    {
+        $this->saveCache();
+    }
 }
