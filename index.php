@@ -2,7 +2,7 @@
 /**
  * Pingo! By; Doug Hatcher superterran@gmail.com
  */
-ini_set('display_errors', true);
+//ini_set('display_errors', true);
 require('pingo.php');
 $pingo = new pingo();
 $do = array_merge($_GET, $_POST);
